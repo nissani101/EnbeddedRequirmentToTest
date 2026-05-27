@@ -8,9 +8,31 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\ConectionManager\ConectionManager.csproj" />
-    <ProjectReference Include="..\DocumentManager\DocumentManager.csproj" />
-    <ProjectReference Include="..\TestCreator\TestCreator.csproj" />
+    <ProjectReference Include="ConectionManager\ConectionManager.csproj" />
+    <ProjectReference Include="DocumentManager\DocumentManager.csproj" />
+    <ProjectReference Include="TestCreator\TestCreator.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="ConectionManager\**" />
+    <Compile Remove="DocumentManager\**" />
+    <Compile Remove="SchemaDiscovery\**" />
+    <Compile Remove="TestCreator\**" />
+    <Compile Remove="TestCreatorWpfApp\**" />
+    <Compile Remove="UdpTerminalTool\**" />
+    <EmbeddedResource Remove="ConectionManager\**" />
+    <EmbeddedResource Remove="DocumentManager\**" />
+    <EmbeddedResource Remove="SchemaDiscovery\**" />
+    <EmbeddedResource Remove="TestCreator\**" />
+    <EmbeddedResource Remove="TestCreatorWpfApp\**" />
+    <EmbeddedResource Remove="UdpTerminalTool\**" />
+    <None Remove="ConectionManager\**" />
+    <None Remove="DocumentManager\**" />
+    <None Remove="SchemaDiscovery\**" />
+    <None Remove="TestCreator\**" />
+    <None Remove="TestCreatorWpfApp\**" />
+    <None Remove="UdpTerminalTool\**" />
+    <Page Remove="TestCreatorWpfApp\**" />
   </ItemGroup>
 
   <ItemGroup>

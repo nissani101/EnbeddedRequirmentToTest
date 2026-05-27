@@ -158,7 +158,12 @@ This file tracks the features implemented and significant changes made to the pr
 - **Dynamic Navigation**: Updated the main window navigation logic to support toggling the visibility of the new tab.
 - **Future-Ready**: The tab is structured to support future real-time testing session recording and monitoring.
 
-## [2026-05-27] Enhanced Query and Telemetry Visualization
+## [2026-05-28] Post-Git Upload Fixes
+- **Restored Solution Integrity**: Fixed 270+ build errors in Visual Studio following the project's upload to Git.
+- **Path Correction**: Updated `EnbeddedRequirmentToTest.sln` and `EnbeddedRequirmentToTest.csproj` to reflect the new directory structure (moving sibling projects into subdirectories).
+- **Source Conflict Resolution**: Configured the root project (`EnbeddedRequirmentToTest.csproj`) to exclude sub-project directories (`DocumentManager`, `TestCreator`, etc.) from its recursive compilation to prevent duplicate definition errors.
+- **Verified Build**: Confirmed successful solution-wide build using the CLI and addressed broken project references.
+
 - **Sub-module Creation**: Developed the `SchemaDiscovery` module for advanced SQL schema exploration.
 - **Database Analysis**: The "Query" button now retrieves selected table structures and fetches real-time Min/Max statistics for columns.
 - **Telemetry Integration**: Implemented logic to load parameter data from `telemetria.xlsx` and cross-reference it with database metadata.

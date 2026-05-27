@@ -5,17 +5,17 @@ VisualStudioVersion = 17.14.37111.16
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EnbeddedRequirmentToTest", "EnbeddedRequirmentToTest.csproj", "{1B38E74B-2A69-45A5-BF68-B237EB72EF88}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConectionManager", "..\ConectionManager\ConectionManager.csproj", "{A24742FE-ED2C-4BF1-AA55-AA369FA1E53D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConectionManager", "ConectionManager\ConectionManager.csproj", "{A24742FE-ED2C-4BF1-AA55-AA369FA1E53D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DocumentManager", "..\DocumentManager\DocumentManager.csproj", "{290E6BCF-7903-4369-8E4F-8B202311373E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DocumentManager", "DocumentManager\DocumentManager.csproj", "{290E6BCF-7903-4369-8E4F-8B202311373E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestCreator", "..\TestCreator\TestCreator.csproj", "{4422FEC5-A411-4C51-A892-865A91F3DF20}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestCreator", "TestCreator\TestCreator.csproj", "{4422FEC5-A411-4C51-A892-865A91F3DF20}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestCreatorWpfApp", "..\TestCreatorWpfApp\TestCreatorWpfApp.csproj", "{5AFFA2EC-466B-4AFD-BF22-1CC821703548}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestCreatorWpfApp", "TestCreatorWpfApp\TestCreatorWpfApp.csproj", "{5AFFA2EC-466B-4AFD-BF22-1CC821703548}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UdpTerminalTool", "..\UdpTerminalTool\UdpTerminalTool.csproj", "{E735D6E2-6D41-493C-A80F-6A2D1AB2268D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UdpTerminalTool", "UdpTerminalTool\UdpTerminalTool.csproj", "{E735D6E2-6D41-493C-A80F-6A2D1AB2268D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SchemaDiscovery", "..\SchemaDiscovery\SchemaDiscovery.csproj", "{032CBF82-62FB-429E-BE97-53A9808F676F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SchemaDiscovery", "SchemaDiscovery\SchemaDiscovery.csproj", "{032CBF82-62FB-429E-BE97-53A9808F676F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
