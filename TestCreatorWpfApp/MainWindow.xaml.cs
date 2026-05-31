@@ -32,6 +32,7 @@ namespace TestCreatorWpfApp
         public string TcpIp { get; set; } = "127.0.0.1";
         public int TcpPort { get; set; } = 5002;
         public string DbConnectionString { get; set; } = string.Empty;
+        public List<string> DbConnectionHistory { get; set; } = new List<string>();
         public bool UseTcp { get; set; } = false;
         public bool LoadFromSql { get; set; } = false;
         public List<string> History { get; set; } = new List<string>();
@@ -50,6 +51,8 @@ namespace TestCreatorWpfApp
     }
     public partial class MainWindow : Window
     {
+        private bool _isInitializing = true;
+        private bool _isReverting = false;
         private Process? _serverProcess;
         private Process? _clientProcess;
         private Process? _tcpServerProcess;
@@ -73,7 +76,8 @@ namespace TestCreatorWpfApp
             // Connect to DB on startup
             _ = ConnectToDatabaseOnStartup();
 
-            StartExternalTerminals();
+            StartRelevantTerminals();
+            _isInitializing = false;
 
             // Send initial ping to monitors
             _ = LogToTerminal("WPF Application Linked - Ready.", null);
@@ -89,6 +93,7 @@ namespace TestCreatorWpfApp
                 LogSystemMessage("DB: No connection string configured.");
                 lblDbStatus.Text = "DB: Not Configured";
                 lblDbStatus.Foreground = Brushes.Gray;
+                treeDbSchema.ItemsSource = null;
                 return;
             }
 
@@ -101,12 +106,34 @@ namespace TestCreatorWpfApp
                 LogSystemMessage("DB: Connection established successfully.");
                 lblDbStatus.Text = "DB: Connected";
                 lblDbStatus.Foreground = Brushes.LightGreen;
+                txtDbSuccess.Visibility = Visibility.Visible;
+                txtDbError.Visibility = Visibility.Collapsed;
+                await LoadDatabaseSchemaAsync();
             }
             else
             {
                 LogSystemMessage("DB: Connection failed. Check settings.");
                 lblDbStatus.Text = "DB: Disconnected";
                 lblDbStatus.Foreground = Brushes.Red;
+                treeDbSchema.ItemsSource = null;
+                txtDbSuccess.Visibility = Visibility.Collapsed;
+                txtDbError.Visibility = Visibility.Visible;
+            }
+        }
+
+        private async Task LoadDatabaseSchemaAsync()
+        {
+            try
+            {
+                LogSystemMessage("DB: Loading database schema...");
+                SchemaExplorer explorer = new SchemaExplorer();
+                var schema = await explorer.GetDatabaseSchemaAsync(_settings.DbConnectionString);
+                treeDbSchema.ItemsSource = schema;
+                LogSystemMessage("DB: Schema loaded successfully.");
+            }
+            catch (Exception ex)
+            {
+                LogSystemMessage($"DB: Error loading schema: {ex.Message}");
             }
         }
 
@@ -136,8 +163,10 @@ namespace TestCreatorWpfApp
                     txtUdpPort.Text = _settings.UdpPort.ToString();
                     txtTcpIp.Text = _settings.TcpIp;
                     txtTcpPort.Text = _settings.TcpPort.ToString();
-                    txtDbConnectionString.Text = _settings.DbConnectionString;
-                    chkUseTcp.IsChecked = _settings.UseTcp;
+                    cmbDbConnectionString.ItemsSource = _settings.DbConnectionHistory;
+                    cmbDbConnectionString.Text = _settings.DbConnectionString;
+                    rbUdp.IsChecked = !_settings.UseTcp;
+                    rbTcp.IsChecked = _settings.UseTcp;
                     chkLoadFromSql.IsChecked = _settings.LoadFromSql;
 
                     RefreshHistoryList(); LoadRequirementPreview();
@@ -158,8 +187,8 @@ namespace TestCreatorWpfApp
                 if (int.TryParse(txtUdpPort.Text, out int uPort)) _settings.UdpPort = uPort;
                 _settings.TcpIp = txtTcpIp.Text;
                 if (int.TryParse(txtTcpPort.Text, out int tPort)) _settings.TcpPort = tPort;
-                _settings.DbConnectionString = txtDbConnectionString.Text;
-                _settings.UseTcp = chkUseTcp.IsChecked ?? false;
+                _settings.DbConnectionString = cmbDbConnectionString.Text;
+                _settings.UseTcp = rbTcp.IsChecked ?? false;
                 _settings.LoadFromSql = chkLoadFromSql.IsChecked ?? false;
 
                 string json = JsonSerializer.Serialize(_settings, new JsonSerializerOptions { WriteIndented = true });
@@ -194,7 +223,7 @@ namespace TestCreatorWpfApp
             }
             txtUdpIp.Text = "127.0.0.1"; txtUdpPort.Text = "5000";
             txtTcpIp.Text = "127.0.0.1"; txtTcpPort.Text = "5002";
-            txtDbConnectionString.Text = "";
+            cmbDbConnectionString.Text = "";
         }
 
         private void nav_Click(object sender, RoutedEventArgs e)
@@ -218,56 +247,211 @@ namespace TestCreatorWpfApp
             LogSystemMessage("Action history cleared.");
         }
 
-        private void btnSaveUdpSettings_Click(object sender, RoutedEventArgs e)
+        private async void btnSaveUdpSettings_Click(object sender, RoutedEventArgs e)
         {
             _settings.UdpIp = txtUdpIp.Text;
             if (int.TryParse(txtUdpPort.Text, out int port)) _settings.UdpPort = port;
             SaveSettings();
             LogSystemMessage("UDP Configuration saved.");
+
+            txtUdpSuccess.Visibility = Visibility.Collapsed;
+            txtUdpError.Visibility = Visibility.Collapsed;
+
+            try
+            {
+                UdpSocketManager udp = new UdpSocketManager();
+                string testMsg = $"Ping {DateTime.Now:T}";
+                string? echo = await udp.SendAndReceiveEchoAsync(testMsg, _settings.UdpIp, _settings.UdpPort, 1500);
+                if (echo == testMsg)
+                {
+                    txtUdpSuccess.Visibility = Visibility.Visible;
+                    LogSystemMessage("UDP Connection Test: Success");
+                }
+                else
+                {
+                    txtUdpError.Visibility = Visibility.Visible;
+                    LogSystemMessage("UDP Connection Test: Failed (Timeout)");
+                }
+            }
+            catch
+            {
+                txtUdpError.Visibility = Visibility.Visible;
+                LogSystemMessage("UDP Connection Test: Error");
+            }
         }
 
-        private void btnSaveTcpSettings_Click(object sender, RoutedEventArgs e)
+        private async void btnSaveTcpSettings_Click(object sender, RoutedEventArgs e)
         {
             _settings.TcpIp = txtTcpIp.Text;
             if (int.TryParse(txtTcpPort.Text, out int port)) _settings.TcpPort = port;
             SaveSettings();
             LogSystemMessage("TCP Configuration saved.");
+
+            txtTcpSuccess.Visibility = Visibility.Collapsed;
+            txtTcpError.Visibility = Visibility.Collapsed;
+
+            try
+            {
+                TcpSocketManager tcp = new TcpSocketManager();
+                string testMsg = $"Ping {DateTime.Now:T}";
+                string? echo = await tcp.SendAndReceiveEchoAsync(testMsg, _settings.TcpIp, _settings.TcpPort, 1500);
+                if (echo == testMsg)
+                {
+                    txtTcpSuccess.Visibility = Visibility.Visible;
+                    LogSystemMessage("TCP Connection Test: Success");
+                }
+                else
+                {
+                    txtTcpError.Visibility = Visibility.Visible;
+                    LogSystemMessage("TCP Connection Test: Failed (Timeout)");
+                }
+            }
+            catch
+            {
+                txtTcpError.Visibility = Visibility.Visible;
+                LogSystemMessage("TCP Connection Test: Error");
+            }
         }
 
-        private void btnSaveDbSettings_Click(object sender, RoutedEventArgs e)
+        private void UpdateDbHistory(string connStr)
         {
-            _settings.DbConnectionString = txtDbConnectionString.Text;
+            if (string.IsNullOrWhiteSpace(connStr)) return;
+            if (_settings.DbConnectionHistory.Contains(connStr))
+            {
+                _settings.DbConnectionHistory.Remove(connStr);
+            }
+            _settings.DbConnectionHistory.Insert(0, connStr);
+            if (_settings.DbConnectionHistory.Count > 10)
+            {
+                _settings.DbConnectionHistory = _settings.DbConnectionHistory.Take(10).ToList();
+            }
+            cmbDbConnectionString.ItemsSource = null;
+            cmbDbConnectionString.ItemsSource = _settings.DbConnectionHistory;
+            cmbDbConnectionString.Text = connStr;
+        }
+
+        private async void btnSaveDbSettings_Click(object sender, RoutedEventArgs e)
+        {
+            string connStr = cmbDbConnectionString.Text;
+            _settings.DbConnectionString = connStr;
             SaveSettings();
             LogSystemMessage("Database settings saved.");
-            _ = ConnectToDatabaseOnStartup();
+            
+            txtDbSuccess.Visibility = Visibility.Collapsed;
+            txtDbError.Visibility = Visibility.Collapsed;
+
+            if (string.IsNullOrWhiteSpace(_settings.DbConnectionString))
+            {
+                txtDbError.Visibility = Visibility.Visible;
+                return;
+            }
+
+            LogSystemMessage("DB: Attempting to connect...");
+            DatabaseManager dbManager = new DatabaseManager();
+            bool isConnected = await dbManager.TestConnectionAsync(_settings.DbConnectionString);
+
+            if (isConnected)
+            {
+                LogSystemMessage("DB: Connection established successfully.");
+                lblDbStatus.Text = "DB: Connected";
+                lblDbStatus.Foreground = Brushes.LightGreen;
+                txtDbSuccess.Visibility = Visibility.Visible;
+                txtDbError.Visibility = Visibility.Collapsed;
+                UpdateDbHistory(connStr);
+                SaveSettings();
+                await LoadDatabaseSchemaAsync();
+            }
+            else
+            {
+                LogSystemMessage("DB: Connection failed. Check settings.");
+                lblDbStatus.Text = "DB: Disconnected";
+                lblDbStatus.Foreground = Brushes.Red;
+                treeDbSchema.ItemsSource = null;
+                txtDbSuccess.Visibility = Visibility.Collapsed;
+                txtDbError.Visibility = Visibility.Visible;
+            }
         }
 
         private async void btnTestDbConnection_Click(object sender, RoutedEventArgs e)
         {
-            if (string.IsNullOrWhiteSpace(txtDbConnectionString.Text))
+            string connStr = cmbDbConnectionString.Text;
+            if (string.IsNullOrWhiteSpace(connStr))
             {
                 LogSystemMessage("Warning: No DB connection string provided.");
+                txtDbSuccess.Visibility = Visibility.Collapsed;
+                txtDbError.Visibility = Visibility.Visible;
                 return;
             }
 
             LogSystemMessage("Testing DB connection...");
+            txtDbSuccess.Visibility = Visibility.Collapsed;
+            txtDbError.Visibility = Visibility.Collapsed;
+
             DatabaseManager dbManager = new DatabaseManager();
-            bool isConnected = await dbManager.TestConnectionAsync(txtDbConnectionString.Text);
+            bool isConnected = await dbManager.TestConnectionAsync(connStr);
 
             if (isConnected)
             {
                 LogSystemMessage("Success: Database Connection Successful!");
                 AddToHistory("Database Connection Test: SUCCESS");
+                txtDbSuccess.Visibility = Visibility.Visible;
+                txtDbError.Visibility = Visibility.Collapsed;
+                UpdateDbHistory(connStr);
+                SaveSettings();
             }
             else
             {
                 LogSystemMessage("Error: Database Connection Failed.");
                 AddToHistory("Database Connection Test: FAILED");
+                txtDbSuccess.Visibility = Visibility.Collapsed;
+                txtDbError.Visibility = Visibility.Visible;
             }
         }
 
-        private void StartExternalTerminals()
+        private void Protocol_Checked(object sender, RoutedEventArgs e)
         {
+            if (_isInitializing || _isReverting || _settings == null) return;
+
+            bool useTcp = rbTcp.IsChecked ?? false;
+            if (useTcp != _settings.UseTcp)
+            {
+                string from = useTcp ? "UDP" : "TCP";
+                string to = useTcp ? "TCP" : "UDP";
+
+                var result = MessageBox.Show($"Are you sure you want to disconnect from {from} and connect to {to}?",
+                                           "Confirm Protocol Switch",
+                                           MessageBoxButton.OKCancel,
+                                           MessageBoxImage.Question);
+
+                if (result == MessageBoxResult.OK)
+                {
+                    _settings.UseTcp = useTcp;
+                    SaveSettings();
+                    StartRelevantTerminals();
+                    LogSystemMessage($"Protocol switched to {to}. Terminals restarted.");
+                }
+                else
+                {
+                    _isReverting = true;
+                    if (useTcp) rbUdp.IsChecked = true;
+                    else rbTcp.IsChecked = true;
+                    _isReverting = false;
+                }
+            }
+        }
+
+        private void StopAllTerminals()
+        {
+            try { if (_serverProcess != null && !_serverProcess.HasExited) _serverProcess.Kill(); } catch { }
+            try { if (_clientProcess != null && !_clientProcess.HasExited) _clientProcess.Kill(); } catch { }
+            try { if (_tcpServerProcess != null && !_tcpServerProcess.HasExited) _tcpServerProcess.Kill(); } catch { }
+            try { if (_tcpClientProcess != null && !_tcpClientProcess.HasExited) _tcpClientProcess.Kill(); } catch { }
+            _serverProcess = null; _clientProcess = null; _tcpServerProcess = null; _tcpClientProcess = null;
+        }
+
+        private void StartRelevantTerminals()
+        {
+            StopAllTerminals();
             try
             {
                 string toolDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\..\..\..\UdpTerminalTool\bin\Debug\net9.0");
@@ -279,11 +463,18 @@ namespace TestCreatorWpfApp
 
                 if (File.Exists(toolExe))
                 {
-                    _serverProcess = Process.Start(new ProcessStartInfo { FileName = toolExe, Arguments = $"server {_settings.UdpIp} {_settings.UdpPort}", UseShellExecute = true });
-                    _clientProcess = Process.Start(new ProcessStartInfo { FileName = toolExe, Arguments = "client", UseShellExecute = true });
-                    _tcpServerProcess = Process.Start(new ProcessStartInfo { FileName = toolExe, Arguments = $"tcpserver {_settings.TcpIp} {_settings.TcpPort}", UseShellExecute = true });
-                    _tcpClientProcess = Process.Start(new ProcessStartInfo { FileName = toolExe, Arguments = "tcpclient", UseShellExecute = true });
-                    LogSystemMessage("External terminals started.");
+                    if (_settings.UseTcp)
+                    {
+                        _tcpServerProcess = Process.Start(new ProcessStartInfo { FileName = toolExe, Arguments = $"tcpserver {_settings.TcpIp} {_settings.TcpPort}", UseShellExecute = true });
+                        _tcpClientProcess = Process.Start(new ProcessStartInfo { FileName = toolExe, Arguments = "tcpclient", UseShellExecute = true });
+                        LogSystemMessage("TCP terminals started.");
+                    }
+                    else
+                    {
+                        _serverProcess = Process.Start(new ProcessStartInfo { FileName = toolExe, Arguments = $"server {_settings.UdpIp} {_settings.UdpPort}", UseShellExecute = true });
+                        _clientProcess = Process.Start(new ProcessStartInfo { FileName = toolExe, Arguments = "client", UseShellExecute = true });
+                        LogSystemMessage("UDP terminals started.");
+                    }
                 }
             }
             catch (Exception ex) { LogSystemMessage($"Error starting terminals: {ex.Message}"); }

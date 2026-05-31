@@ -243,7 +243,18 @@
                                         <TextBox x:Name="txtOutput"/>
                                     </DockPanel>
 
-                                    <CheckBox x:Name="chkUseTcp" Content="Use TCP instead of UDP" VerticalAlignment="Center" Foreground="{StaticResource AccentPurple}" FontWeight="SemiBold" Margin="0,5,0,5"/>
+                                    <TextBlock Margin="0,5,0,5" Foreground="{StaticResource AccentPurple}" FontWeight="SemiBold">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Text" Value="Mode: UDP"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsChecked, ElementName=rbTcp}" Value="True">
+                                                        <Setter Property="Text" Value="Mode: TCP"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
                                     <CheckBox x:Name="chkLoadFromSql" Content="Load Parameters from SQL" VerticalAlignment="Center" Foreground="{StaticResource AccentPurple}" FontWeight="SemiBold" Margin="0,5,0,15"/>
 
                                     <StackPanel Orientation="Vertical">
@@ -609,32 +620,56 @@
                         <TextBlock Text="Configure network parameters and database connection." Foreground="{StaticResource SecondaryText}" FontSize="14"/>
                     </StackPanel>
 
+                    <!-- Protocol Selection Card -->
+                    <Border Style="{StaticResource CardBorder}" Width="720" HorizontalAlignment="Left">
+                        <StackPanel>
+                            <TextBlock Text="Active protocol selection" FontWeight="Bold" Foreground="{StaticResource AccentPurple}" Margin="0,0,0,15"/>
+                            <StackPanel Orientation="Horizontal">
+                                <RadioButton x:Name="rbUdp" Content="UDP Mode" IsChecked="True" Foreground="{StaticResource AccentPurple}" FontWeight="SemiBold" Margin="0,0,20,0" Checked="Protocol_Checked"/>
+                                <RadioButton x:Name="rbTcp" Content="TCP Mode" Foreground="{StaticResource AccentPurple}" FontWeight="SemiBold" Checked="Protocol_Checked"/>
+                            </StackPanel>
+                            <TextBlock Text="Selecting a protocol will automatically start its terminal nodes and close the other." Foreground="{StaticResource SecondaryText}" FontSize="11" Margin="0,10,0,0"/>
+                        </StackPanel>
+                    </Border>
+
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
                         <!-- UDP Settings Card -->
                         <Border Style="{StaticResource CardBorder}" Width="350" HorizontalAlignment="Left" Margin="0,0,20,0">
                             <StackPanel>
-                                <TextBlock Text="UDP CONFIGURATION" FontWeight="Bold" Foreground="{StaticResource AccentPurple}" Margin="0,0,0,15"/>
+                                <TextBlock Text="Udp configuration" FontWeight="Bold" Foreground="{StaticResource AccentPurple}" Margin="0,0,0,15"/>
                                 <Label Content="Server IP Address"/>
                                 <TextBox x:Name="txtUdpIp" Margin="0,0,0,15"/>
 
                                 <Label Content="Server Port"/>
                                 <TextBox x:Name="txtUdpPort" Margin="0,0,0,20"/>
 
-                                <Button Content="Save UDP Settings" Style="{StaticResource SuccessButton}" Click="btnSaveUdpSettings_Click"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Content="Connect" Style="{StaticResource SuccessButton}" Click="btnSaveUdpSettings_Click" Width="120" Margin="0,0,10,0"/>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBlock x:Name="txtUdpSuccess" Text="&#xE73E;" FontFamily="Segoe MDL2 Assets" Foreground="Green" FontSize="18" FontWeight="Bold" Visibility="Collapsed" Margin="0,0,5,0" ToolTip="Connection Successful"/>
+                                        <TextBlock x:Name="txtUdpError" Text="&#xE711;" FontFamily="Segoe MDL2 Assets" Foreground="Red" FontSize="18" FontWeight="Bold" Visibility="Collapsed" ToolTip="Connection Failed"/>
+                                    </StackPanel>
+                                </StackPanel>
                             </StackPanel>
                         </Border>
 
                         <!-- TCP Settings Card -->
                         <Border Style="{StaticResource CardBorder}" Width="350" HorizontalAlignment="Left">
                             <StackPanel>
-                                <TextBlock Text="TCP CONFIGURATION" FontWeight="Bold" Foreground="{StaticResource AccentPurple}" Margin="0,0,0,15"/>
+                                <TextBlock Text="Tcp configuration" FontWeight="Bold" Foreground="{StaticResource AccentPurple}" Margin="0,0,0,15"/>
                                 <Label Content="Server IP Address"/>
                                 <TextBox x:Name="txtTcpIp" Margin="0,0,0,15"/>
 
                                 <Label Content="Server Port"/>
                                 <TextBox x:Name="txtTcpPort" Margin="0,0,0,20"/>
 
-                                <Button Content="Save TCP Settings" Style="{StaticResource SuccessButton}" Click="btnSaveTcpSettings_Click" Background="{StaticResource AccentPurple}"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Content="Connect" Style="{StaticResource SuccessButton}" Click="btnSaveTcpSettings_Click" Background="{StaticResource AccentPurple}" Width="120" Margin="0,0,10,0"/>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBlock x:Name="txtTcpSuccess" Text="&#xE73E;" FontFamily="Segoe MDL2 Assets" Foreground="Green" FontSize="18" FontWeight="Bold" Visibility="Collapsed" Margin="0,0,5,0" ToolTip="Connection Successful"/>
+                                        <TextBlock x:Name="txtTcpError" Text="&#xE711;" FontFamily="Segoe MDL2 Assets" Foreground="Red" FontSize="18" FontWeight="Bold" Visibility="Collapsed" ToolTip="Connection Failed"/>
+                                    </StackPanel>
+                                </StackPanel>
                             </StackPanel>
                         </Border>
                     </StackPanel>
@@ -642,13 +677,18 @@
                     <!-- Database Settings Card -->
                     <Border Style="{StaticResource CardBorder}" Width="720" HorizontalAlignment="Left">
                         <StackPanel>
-                            <TextBlock Text="DATABASE CONFIGURATION" FontWeight="Bold" Foreground="{StaticResource AccentPurple}" Margin="0,0,0,15"/>
-                            <Label Content="Connection String"/>
-                            <TextBox x:Name="txtDbConnectionString" Margin="0,0,0,20"/>
+                            <TextBlock Text="Database" FontWeight="Bold" Foreground="{StaticResource AccentPurple}" Margin="0,0,0,15"/>
+                            <Label Content="Connection string"/>
+                            <ComboBox x:Name="cmbDbConnectionString" IsEditable="True" Margin="0,0,0,20"/>
 
                             <StackPanel Orientation="Horizontal">
-                                <Button Content="Save DB Settings" Style="{StaticResource SuccessButton}" Click="btnSaveDbSettings_Click" Background="#455A64" Width="180" Margin="0,0,10,0"/>
+                                <Button Content="Connect" Style="{StaticResource SuccessButton}" Click="btnSaveDbSettings_Click" Background="#455A64" Width="180" Margin="0,0,10,0"/>
                                 <Button Content="Test Connection" Style="{StaticResource PrimaryButton}" Click="btnTestDbConnection_Click" Background="#607D8B" Width="180"/>
+                                
+                                <StackPanel Orientation="Horizontal" Margin="20,0,0,0" VerticalAlignment="Center">
+                                    <TextBlock x:Name="txtDbSuccess" Text="&#xE73E;" FontFamily="Segoe MDL2 Assets" Foreground="Green" FontSize="20" FontWeight="Bold" Visibility="Collapsed" Margin="0,0,10,0" ToolTip="Connection Successful"/>
+                                    <TextBlock x:Name="txtDbError" Text="&#xE711;" FontFamily="Segoe MDL2 Assets" Foreground="Red" FontSize="20" FontWeight="Bold" Visibility="Collapsed" ToolTip="Connection Failed"/>
+                                </StackPanel>
                             </StackPanel>
                         </StackPanel>
                     </Border>

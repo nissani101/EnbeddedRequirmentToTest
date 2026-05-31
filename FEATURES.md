@@ -177,6 +177,30 @@ This file tracks the features implemented and significant changes made to the pr
 - **Sequential Execution**: When multiple rows are selected, the "Run Selected" button executes all chosen test cases sequentially.
 - **Real-time Row Feedback**: Each selected row updates its progress and status independently during the batch run.
 
+## [2026-05-31] Protocol Selection and Terminal Lifecycle Management
+- **Protocol Radio Buttons**: Replaced the "Use TCP" checkbox with a dedicated **Protocol Selection Card** in the 'Settings' tab containing UDP and TCP radio buttons.
+- **Default Configuration**: UDP is now explicitly set as the default protocol upon first run.
+- **Intelligent Terminal Management**:
+  - Refactored terminal orchestration into a protocol-aware system.
+  - Switching protocols (e.g., from UDP to TCP) now automatically **kills existing terminal processes** for the inactive protocol.
+  - Automatically **starts the relevant terminals** for the active protocol (e.g., TCP Server and TCP Client).
+- **Synchronized UI Feedback**: Added a dynamic mode indicator in the 'Logic' tab that reflects the active protocol selected in 'Settings'.
+- **Robust Initialization**: Implemented a lifecycle flag to ensure terminal processes are only managed after the application and settings are fully loaded.
+- **Switch Confirmation Dialog**: Added a mandatory confirmation popup (`OK/Cancel`) when switching between TCP and UDP protocols to prevent accidental disconnections. Reverts the selection if cancelled.
+
+## [2026-05-31] DB Tree Connection and Schema Loading
+- **Integrated DB Tree with Settings**: Connected the `treeDbSchema` in the 'Record Testing' tab to the database connection string defined in the 'Settings' tab.
+- **Automated Schema Discovery**: Implemented `LoadDatabaseSchemaAsync` to automatically fetch and display the database schema (tables and columns) using the `SchemaDiscovery` module.
+- **Lifecycle Triggers**:
+  - The schema now loads automatically on application startup if a connection string is present.
+  - Updating and saving database settings instantly triggers a schema refresh.
+- **Robust Error Handling**: Added logic to clear the DB tree and display appropriate system messages if the connection fails or if no connection string is provided.
+- **Verified Integration**: Confirmed that the `btnQueryRecord_Click` logic correctly accesses the populated tree nodes for telemetry analysis.
+- **Unified Connect Feedback**: Renamed all "Save Settings" buttons in the Settings tab to **"Connect"** and added visual indicators (**Green Checkmark / Red X**) for UDP, TCP, and Database sections. Each "Connect" click now triggers an immediate connection test with instant visual feedback.
+- **UI Text Refinement**: Updated all section headers in the Settings tab to follow Sentence Case formatting (e.g., "Database" instead of "Database configuration") for a cleaner, more modern aesthetic.
+- **Connection String History**: Converted the Database connection string input into an **editable ComboBox** that stores and remembers the **last 10 successful connection strings**.
+- **Enhanced Persistence**: The application now automatically loads the last used connection string on startup from the persistent settings history.
+
 ## [2026-05-26] 3D Infographic Chart with 4 Indicators
 - **Advanced Visualization**: Upgraded the 3D chart to include 4 distinct pillars: **Pass, Fail, Not Run, and Warning**.
 - **State Definition**:
