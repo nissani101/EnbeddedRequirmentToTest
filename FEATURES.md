@@ -201,12 +201,12 @@ This file tracks the features implemented and significant changes made to the pr
 - **Connection String History**: Converted the Database connection string input into an **editable ComboBox** that stores and remembers the **last 10 successful connection strings**.
 - **Enhanced Persistence**: The application now automatically loads the last used connection string on startup from the persistent settings history.
 
-## [2026-05-26] 3D Infographic Chart with 4 Indicators
-- **Advanced Visualization**: Upgraded the 3D chart to include 4 distinct pillars: **Pass, Fail, Not Run, and Warning**.
-- **State Definition**:
-  - **Pass (Green)**: Successful network echo.
-  - **Warning (Amber)**: Network echo received but data did not match exactly (corrupted).
-  - **Fail (Red)**: Network timeout or no response.
-  - **Not Run (Slate Gray)**: Permutations currently pending execution.
-- **Pillar & Stage Layout**: Optimized the 3D stage and camera to fit 4 indicators side-by-side with professional lighting and materials.
-- **Side-by-Side Monitoring**: Reorganized the dashboard layout to place the 3D chart to the right of the execution log for better spatial efficiency.
+## [2026-06-02] Database Telemetry Analysis and Table Records Preview
+- **Column Selection**: Enabled individual column selection in the Database tree within the 'Record Testing' tab.
+- **Direct DB Data Fetching**: Implemented logic to fetch the last 50 data points directly from selected database columns, prioritizing this data over the Excel fallback.
+- **Intelligent Ordering**: Added automated discovery of ordering columns (ID, Timestamp, Date) to ensure telemetry data is fetched in the correct chronological sequence.
+- **Dynamic Boundaries**: Integrated real-time statistical analysis (Min/Max) for selected columns to establish dynamic alerting thresholds.
+- **Unified Visualization**: Updated the Telemetry Analysis dashboard to seamlessly visualize data from both Database and Excel sources in individual and global trend charts.
+- **Table Records Preview**: Added a new **'Table Records Preview'** DataGrid below the telemetry analysis.
+- **Dynamic Data Binding**: Selecting a table in the database tree and clicking 'Query' now automatically populates the DataGrid with a sample of records from that specific table.
+- **Professional Grid Layout**: Implemented an alternating-row DataGrid with modern styling, including sticky headers and a GridSplitter for adjustable viewing space.

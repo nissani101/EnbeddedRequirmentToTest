@@ -42,6 +42,8 @@ namespace TestCreatorWpfApp
     public class TelemetryItem
     {
         public string ParameterName { get; set; } = string.Empty;
+        public string TableName { get; set; } = string.Empty;
+        public string ColumnName { get; set; } = string.Empty;
         public string Unit { get; set; } = "Units";
         public double MinValue { get; set; }
         public double MaxValue { get; set; }
@@ -505,9 +507,6 @@ namespace TestCreatorWpfApp
                 }
 
                 ExcelTestTableCreator creator = new ExcelTestTableCreator();
-                // We need to access the logic to read the doc. 
-                // Since ReadConditionFromDoc is private in ExcelTestTableCreator, I will use a simple implementation here
-                // or I should have made it public. Let s just read it here for simplicity of the UI update.
                 using (DocumentFormat.OpenXml.Packaging.WordprocessingDocument wordDoc = DocumentFormat.OpenXml.Packaging.WordprocessingDocument.Open(txtReq.Text, false))
                 {
                     var body = wordDoc.MainDocumentPart?.Document?.Body;
@@ -742,17 +741,14 @@ namespace TestCreatorWpfApp
                 
                 foreach (var selectedRow in selectedRows)
                 {
-                    // Extract the data part after the timestamp [yyyy-MM-dd HH:mm:ss] 
                     string text = selectedRow.Text;
                     int dataIndex = text.IndexOf("] ") + 1;
                     if (dataIndex > 0) text = text.Substring(dataIndex).Trim();
-                    
-                    // Clean the data to remove the column separators " | " used for display
                     string cleanData = string.Join(" ", text.Split("|").Select(s => s.Trim()));
 
                     selectedRow.Progress = 0;
                     selectedRow.RowColor = Brushes.Orange;
-                    await Task.Delay(50); // Small UI breathing room
+                    await Task.Delay(50);
                     selectedRow.Progress = 50;
 
                     string? echo = null;
@@ -767,163 +763,226 @@ namespace TestCreatorWpfApp
                         echo = await udp.SendAndReceiveEchoAsync(cleanData, _settings.UdpIp, _settings.UdpPort, 1500);
                     }
 
-                    if (echo == cleanData)
-                    {
-                        selectedRow.RowColor = Brushes.Green;
-                    }
-                    else
-                    {
-                        selectedRow.RowColor = Brushes.Red;
-                    }
+                    if (echo == cleanData) selectedRow.RowColor = Brushes.Green;
+                    else selectedRow.RowColor = Brushes.Red;
                     selectedRow.Progress = 100;
                 }
                 LogSystemMessage("Batch execution of selected rows completed.");
             }
-            catch (Exception ex)
-            {
-                LogSystemMessage($"Error running selected tests: {ex.Message}");
-            }
+            catch (Exception ex) { LogSystemMessage($"Error running selected tests: {ex.Message}"); }
         }
-                private void btnClearRecord_Click(object sender, RoutedEventArgs e)
+        private void btnClearRecord_Click(object sender, RoutedEventArgs e)
         {
             txtRequirementToTest.Clear();
+            gridTableRecords.ItemsSource = null;
             LogSystemMessage("Record Testing: Input cleared.");
         }
 
-                private async void btnQueryRecord_Click(object sender, RoutedEventArgs e)
+        private void DbCheckBox_Checked(object sender, RoutedEventArgs e)
+        {
+            if (sender is CheckBox cb && cb.DataContext is DbNode node && node.Type == "Table")
+            {
+                var schema = treeDbSchema.ItemsSource as List<DbNode>;
+                if (schema == null) return;
+
+                foreach (var table in schema)
+                {
+                    if (table != node && table.IsSelected)
+                    {
+                        table.IsSelected = false;
+                        foreach (var col in table.Children) col.IsSelected = false;
+                    }
+                }
+            }
+        }
+
+        private async void gridTableRecords_SelectedCellsChanged(object sender, SelectedCellsChangedEventArgs e)
+        {
+            if (e.AddedCells.Count == 0) return;
+            
+            var column = e.AddedCells[0].Column;
+            string colName = column.Header?.ToString() ?? "";
+            if (string.IsNullOrEmpty(colName) || colName.Equals("ID", StringComparison.OrdinalIgnoreCase) || colName.Equals("LogTime", StringComparison.OrdinalIgnoreCase)) return;
+
+            var schema = treeDbSchema.ItemsSource as List<DbNode>;
+            if (schema == null) return;
+
+            foreach (var table in schema)
+            {
+                if (!table.IsSelected) continue;
+
+                var targetCol = table.Children.FirstOrDefault(c => c.Name.Split(' ')[0].Equals(colName, StringComparison.OrdinalIgnoreCase));
+                if (targetCol != null)
+                {
+                    foreach (var col in table.Children) col.IsSelected = (col == targetCol);
+                    LogSystemMessage($"Record Testing: Visualizing column '{colName}' from table '{table.Name}'.");
+                    await UpdateTelemetryAnalysisAsync();
+                    break;
+                }
+            }
+        }
+
+        private async void btnQueryRecord_Click(object sender, RoutedEventArgs e)
         {
             try
             {
-                LogSystemMessage("Record Testing: Loading telemetry data...");
-                
-                string telemetryPath = @"C:\Users\nissa\source\repos\Test Files\telemetria.xlsx";
-                if (!File.Exists(telemetryPath))
-                {
-                    LogSystemMessage("Error: Telemetry file not found at " + telemetryPath);
-                    return;
-                }
-
-                DocumentReader reader = new DocumentReader();
-                string[,] excelData = reader.ReadExcelToTwoDimensionalArray(telemetryPath);
-                
-                if (excelData == null || excelData.GetLength(0) < 2)
-                {
-                    LogSystemMessage("Error: Telemetry file is empty or invalid.");
-                    return;
-                }
-
-                int rows = excelData.GetLength(0);
-                int cols = excelData.GetLength(1);
-                
-                // Limit to 5 columns if there are more, or use all available
-                int processCols = Math.Min(cols, 5);
-                LogSystemMessage($"Record Testing: Processing {processCols} telemetry columns.");
-
+                LogSystemMessage("Record Testing: Analyzing telemetry data source...");
                 var schema = treeDbSchema.ItemsSource as List<DbNode>;
-                var selectedTables = schema?.Where(t => t.IsSelected).ToList() ?? new List<DbNode>();
+                var selectedTables = schema?.Where(t => t.IsSelected || t.Children.Any(c => c.IsSelected)).ToList() ?? new List<DbNode>();
+
+                if (selectedTables.Count > 0)
+                {
+                    SchemaExplorer explorer = new SchemaExplorer();
+                    var firstTable = selectedTables.First();
+                    LogSystemMessage($"Record Testing: Fetching records for table '{firstTable.Name}'...");
+                    var tableData = await explorer.GetTableDataAsync(_settings.DbConnectionString, firstTable.Name);
+                    
+                    gridTableRecords.ItemsSource = null;
+                    if (tableData != null && tableData.Rows.Count > 0)
+                    {
+                        gridTableRecords.ItemsSource = tableData.DefaultView;
+                        LogSystemMessage($"Record Testing: Displaying {tableData.Rows.Count} records from '{firstTable.Name}'.");
+                    }
+                    else { LogSystemMessage($"Warning: Table '{firstTable.Name}' returned 0 records."); }
+                }
+                else { gridTableRecords.ItemsSource = null; LogSystemMessage("Record Testing: No tables selected for preview."); }
+
+                await UpdateTelemetryAnalysisAsync();
+            }
+            catch (Exception ex) { LogSystemMessage("Record Testing Error: " + ex.Message); }
+        }
+
+        private async Task UpdateTelemetryAnalysisAsync()
+        {
+            try
+            {
+                var schema = treeDbSchema.ItemsSource as List<DbNode>;
+                var selectedColumns = schema?.SelectMany(t => t.Children.Where(c => c.IsSelected).Select(c => new { Table = t.Name, Column = c.Name.Split(' ')[0] })).Cast<dynamic>().ToList() ?? new List<dynamic>();
+                var selectedTables = schema?.Where(t => t.IsSelected || t.Children.Any(c => c.IsSelected)).ToList() ?? new List<DbNode>();
+
+                if (selectedColumns.Count == 0 && selectedTables.Count > 0)
+                {
+                    var table = selectedTables.First();
+                    var autoCols = table.Children
+                        .Where(c => !c.Name.Equals("ID", StringComparison.OrdinalIgnoreCase) && !c.Name.Contains("Time") && !c.Name.Contains("Date"))
+                        .Take(5).ToList();
+                    foreach (var c in autoCols) selectedColumns.Add(new { Table = table.Name, Column = c.Name.Split(' ')[0] });
+                }
 
                 List<TelemetryItem> telemetryItems = new List<TelemetryItem>();
                 SchemaExplorer explorer = new SchemaExplorer();
+                var colors = new List<SolidColorBrush> { (SolidColorBrush)Application.Current.Resources["AccentPurple"] ?? Brushes.Purple, Brushes.SeaGreen, Brushes.DodgerBlue, Brushes.Orange, Brushes.Crimson };
 
-                for (int c = 0; c < processCols; c++)
+                if (selectedColumns.Count > 0)
                 {
-                    string paramName = excelData[0, c]?.Trim();
-                    if (string.IsNullOrEmpty(paramName)) paramName = $"T_{c + 1}";
-                    
-                    var item = new TelemetryItem { ParameterName = paramName, Unit = "Value" };
-                    
-                    List<double> values = new List<double>();
-                    for (int r = 1; r < rows; r++)
+                    LogSystemMessage($"Record Testing: Fetching telemetry for {selectedColumns.Count} DB parameters.");
+                    for (int i = 0; i < selectedColumns.Count; i++)
                     {
-                        if (double.TryParse(excelData[r, c], out double val)) values.Add(val);
-                    }
+                        var col = selectedColumns[i];
+                        var itemColor = colors[i % colors.Count];
+                        var data = await explorer.GetColumnDataAsync(_settings.DbConnectionString, (string)col.Table, (string)col.Column);
+                        var item = new TelemetryItem { TableName = (string)col.Table, ColumnName = (string)col.Column, ParameterName = $"{col.Table}: {col.Column}", Unit = "DB Value", CurrentValue = data.Count > 0 ? data.Last().ToString("F2") : "N/A" };
 
-                    if (values.Count > 0)
-                    {
-                        item.CurrentValue = values.Last().ToString("F2");
-                        
-                        double minVal = values.Min();
-                        double maxVal = values.Max();
-                        double range = maxVal - minVal;
-                        if (range == 0) range = 1;
-
-                        // Generate LiveCharts Series
-                        item.ChartSeries = new SeriesCollection
+                        if (data.Count > 0)
                         {
-                            new LineSeries
-                            {
-                                Values = new ChartValues<double>(values),
-                                PointGeometry = null,
-                                Fill = Brushes.Transparent,
-                                StrokeThickness = 2,
-                                Stroke = (SolidColorBrush)Application.Current.Resources["AccentPurple"]
-                            }
-                        };
-                        
-                        // Default boundaries if no DB connection
-                        item.MinValue = Math.Floor(minVal * 0.8);
-                        item.MaxValue = Math.Ceiling(maxVal * 1.2);
-                    }
+                            double maxV = data.Max();
+                            double minV = data.Min();
+                            
+                            var mainLine = new LineSeries { Values = new ChartValues<double>(data), PointGeometry = null, Fill = Brushes.Transparent, StrokeThickness = 2, Stroke = itemColor };
+                            
+                            var highlights = new ScatterSeries {
+                                Values = new ChartValues<LiveCharts.Defaults.ObservablePoint> {
+                                    new LiveCharts.Defaults.ObservablePoint(data.IndexOf(maxV), maxV),
+                                    new LiveCharts.Defaults.ObservablePoint(data.IndexOf(minV), minV)
+                                },
+                                PointGeometry = DefaultGeometries.Circle,
+                                MinPointShapeDiameter = 6, MaxPointShapeDiameter = 6,
+                                Fill = Brushes.White, StrokeThickness = 2, Stroke = Brushes.Crimson,
+                                DataLabels = true, LabelPoint = p => p.Y.ToString("F1")
+                            };
 
-                    // Try to get boundaries from DB for selected tables
-                    foreach (var table in selectedTables)
+                            item.ChartSeries = new SeriesCollection { mainLine, highlights };
+                            
+                            var stats = await explorer.GetColumnStatsAsync(_settings.DbConnectionString, (string)col.Table, (string)col.Column);
+                            if (stats.Max > stats.Min) { item.MinValue = stats.Min; item.MaxValue = stats.Max; }
+                            else { item.MinValue = Math.Floor(minV * 0.8); item.MaxValue = Math.Ceiling(maxV * 1.2); }
+                            if (double.TryParse(item.CurrentValue, out double current)) item.Status = (current < item.MinValue || current > item.MaxValue) ? "Alert" : "Normal";
+                        }
+                        telemetryItems.Add(item);
+                    }
+                }
+                else
+                {
+                    LogSystemMessage("Record Testing: No DB context. Using telemetria.xlsx fallback...");
+                    string telemetryPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\..\..\..\Test Files\telemetria.xlsx");
+                    if (!File.Exists(telemetryPath)) telemetryPath = @"C:\Users\nissa\source\repos\EnbeddedRequirmentToTest\Test Files\telemetria.xlsx";
+                    if (!File.Exists(telemetryPath)) { LogSystemMessage("Error: Telemetry source not found."); return; }
+
+                    DocumentReader reader = new DocumentReader();
+                    string[,] excelData = reader.ReadExcelToTwoDimensionalArray(telemetryPath);
+                    if (excelData != null && excelData.GetLength(0) >= 2)
                     {
-                        var column = table.Children.FirstOrDefault(col => 
-                            col.Name.Split(' ')[0].Equals(paramName, StringComparison.OrdinalIgnoreCase));
-                        
-                        if (column != null)
+                        int cols = excelData.GetLength(1);
+                        int processCols = Math.Min(cols, 5);
+                        for (int c = 0; c < processCols; c++)
                         {
-                            string colName = column.Name.Split(' ')[0];
-                            var stats = await explorer.GetColumnStatsAsync(_settings.DbConnectionString, table.Name, colName);
-                            if (stats.Max > stats.Min)
+                            var itemColor = colors[c % colors.Count];
+                            string rawParamName = excelData[0, c]?.Trim() ?? $"T_{c + 1}";
+                            string tableName = selectedTables.Count > 0 ? selectedTables.First().Name : "Excel Source";
+                            var item = new TelemetryItem { TableName = tableName, ColumnName = rawParamName, ParameterName = $"{tableName}: {rawParamName}", Unit = "Value" };
+                            List<double> values = new List<double>();
+                            for (int r = 1; r < excelData.GetLength(0); r++) if (double.TryParse(excelData[r, c], out double val)) values.Add(val);
+
+                            if (values.Count > 0)
                             {
-                                item.MinValue = stats.Min;
-                                item.MaxValue = stats.Max;
+                                item.CurrentValue = values.Last().ToString("F2");
+                                double maxV = values.Max();
+                                double minV = values.Min();
+
+                                var mainLine = new LineSeries { Values = new ChartValues<double>(values), PointGeometry = null, Fill = Brushes.Transparent, StrokeThickness = 2, Stroke = itemColor };
+                                
+                                var highlights = new ScatterSeries {
+                                    Values = new ChartValues<LiveCharts.Defaults.ObservablePoint> {
+                                        new LiveCharts.Defaults.ObservablePoint(values.IndexOf(maxV), maxV),
+                                        new LiveCharts.Defaults.ObservablePoint(values.IndexOf(minV), minV)
+                                    },
+                                    PointGeometry = DefaultGeometries.Circle,
+                                    MinPointShapeDiameter = 6, MaxPointShapeDiameter = 6,
+                                    Fill = Brushes.White, StrokeThickness = 2, Stroke = Brushes.Crimson,
+                                    DataLabels = true, LabelPoint = p => p.Y.ToString("F1")
+                                };
+
+                                item.ChartSeries = new SeriesCollection { mainLine, highlights };
+                                item.MinValue = Math.Floor(minV * 0.8); item.MaxValue = Math.Ceiling(maxV * 1.2);
                             }
-                            break;
+
+                            foreach (var table in selectedTables)
+                            {
+                                var dbCol = table.Children.FirstOrDefault(dc => dc.Name.Split(' ')[0].Equals(rawParamName, StringComparison.OrdinalIgnoreCase));
+                                if (dbCol != null) { var stats = await explorer.GetColumnStatsAsync(_settings.DbConnectionString, table.Name, dbCol.Name.Split(' ')[0]); if (stats.Max > stats.Min) { item.MinValue = stats.Min; item.MaxValue = stats.Max; } break; }
+                            }
+                            if (double.TryParse(item.CurrentValue, out double current)) item.Status = (current < item.MinValue || current > item.MaxValue) ? "Alert" : "Normal";
+                            telemetryItems.Add(item);
                         }
                     }
-
-                    // Update Status based on boundaries
-                    if (double.TryParse(item.CurrentValue, out double current))
-                    {
-                        if (current < item.MinValue || current > item.MaxValue) item.Status = "Alert";
-                        else item.Status = "Normal";
-                    }
-
-                    telemetryItems.Add(item);
                 }
 
+                lstTelemetry.ItemsSource = null;
                 lstTelemetry.ItemsSource = telemetryItems;
-                // Populate Global Chart
                 var globalSeries = new SeriesCollection();
-                var colors = new List<SolidColorBrush> { 
-                    (SolidColorBrush)Application.Current.Resources["AccentPurple"],
-                    Brushes.SeaGreen, Brushes.DodgerBlue, Brushes.Orange, Brushes.Crimson 
-                };
-
                 for (int i = 0; i < telemetryItems.Count; i++)
                 {
                     var item = telemetryItems[i];
-                    var series = new LineSeries
+                    if (item.ChartSeries != null && item.ChartSeries.Count > 0)
                     {
-                        Title = item.ParameterName,
-                        Values = (item.ChartSeries[0] as LineSeries).Values,
-                        PointGeometry = null,
-                        Fill = Brushes.Transparent,
-                        Stroke = colors[i % colors.Count],
-                        StrokeThickness = 2
-                    };
-                    globalSeries.Add(series);
+                        var sourceSeries = item.ChartSeries[0] as LineSeries;
+                        globalSeries.Add(new LineSeries { Title = item.ParameterName, Values = sourceSeries.Values, PointGeometry = null, Fill = Brushes.Transparent, Stroke = sourceSeries.Stroke, StrokeThickness = 2 });
+                    }
                 }
                 chartGlobal.Series = globalSeries;
-
                 LogSystemMessage("Record Testing: Telemetry Analysis updated.");
             }
-            catch (Exception ex)
-            {
-                LogSystemMessage("Record Testing Error: " + ex.Message);
-            }
+            catch (Exception ex) { LogSystemMessage("Telemetry Update Error: " + ex.Message); }
         }
         private void btnClose_Click(object sender, RoutedEventArgs e) => this.Close();
 
@@ -939,11 +998,3 @@ namespace TestCreatorWpfApp
         }
     }
 }
-
-
-
-
-
-
-
-

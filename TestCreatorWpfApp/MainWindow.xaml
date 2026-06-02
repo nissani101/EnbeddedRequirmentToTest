@@ -10,90 +10,6 @@
         FontFamily="Segoe UI">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
-        <!-- Colors -->
-        <SolidColorBrush x:Key="SidebarBrush" Color="#1A1A1D"/>
-        <SolidColorBrush x:Key="SidebarHoverBrush" Color="#333336"/>
-        <SolidColorBrush x:Key="AccentPurple" Color="#7B1FA2"/>
-        <SolidColorBrush x:Key="AccentGreen" Color="#2E7D32"/>
-        <SolidColorBrush x:Key="CardBackground" Color="White"/>
-        <SolidColorBrush x:Key="SecondaryText" Color="#64748B"/>
-
-        <!-- Card Style -->
-        <Style x:Key="CardBorder" TargetType="Border">
-            <Setter Property="Background" Value="{StaticResource CardBackground}"/>
-            <Setter Property="CornerRadius" Value="8"/>
-            <Setter Property="Padding" Value="20"/>
-            <Setter Property="Margin" Value="0,0,0,20"/>
-            <Setter Property="Effect">
-                <Setter.Value>
-                    <DropShadowEffect BlurRadius="15" Direction="-90" RenderingBias="Quality" ShadowDepth="2" Opacity="0.05"/>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <!-- Sidebar Item Style -->
-        <Style x:Key="SidebarItem" TargetType="Button">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="#D1D5DB"/>
-            <Setter Property="Height" Value="50"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="HorizontalContentAlignment" Value="Left"/>
-            <Setter Property="Padding" Value="15,0"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" BorderBrush="{StaticResource AccentPurple}" BorderThickness="4,0,0,0" x:Name="border">
-                            <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="{StaticResource SidebarHoverBrush}"/>
-                                <Setter Property="Foreground" Value="White"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <!-- Modern Input Style -->
-        <Style TargetType="TextBox">
-            <Setter Property="Height" Value="38"/>
-            <Setter Property="Padding" Value="10,0"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-            <Setter Property="BorderBrush" Value="#E2E8F0"/>
-            <Setter Property="BorderThickness" Value="1.5"/>
-            <Setter Property="Background" Value="White"/>
-            <Style.Resources>
-                <Style TargetType="Border">
-                    <Setter Property="CornerRadius" Value="6"/>
-                </Style>
-            </Style.Resources>
-        </Style>
-
-        <!-- Primary Button Style -->
-        <Style x:Key="PrimaryButton" TargetType="Button">
-            <Setter Property="Height" Value="40"/>
-            <Setter Property="Padding" Value="20,0"/>
-            <Setter Property="Background" Value="{StaticResource AccentPurple}"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Style.Resources>
-                <Style TargetType="Border">
-                    <Setter Property="CornerRadius" Value="6"/>
-                </Style>
-            </Style.Resources>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Opacity" Value="0.9"/>
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-
-        <Style x:Key="SuccessButton" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
-            <Setter Property="Background" Value="{StaticResource AccentGreen}"/>
-        </Style>
     </Window.Resources>
 
     <Grid>
@@ -483,7 +399,7 @@
                                 <TreeView.ItemTemplate>
                                     <HierarchicalDataTemplate ItemsSource="{Binding Children}">
                                         <StackPanel Orientation="Horizontal">
-                                            <CheckBox IsChecked="{Binding IsSelected}" VerticalAlignment="Center" Margin="0,0,5,0" Visibility="{Binding IsSelectable, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                            <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" Checked="DbCheckBox_Checked" VerticalAlignment="Center" Margin="0,0,5,0" Visibility="{Binding IsSelectable, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                                             <TextBlock Text="&#xE8B9;" FontFamily="Segoe MDL2 Assets" VerticalAlignment="Center" Margin="0,0,8,0" FontSize="12" Foreground="#64748B">
                                                 <TextBlock.Style>
                                                     <Style TargetType="TextBlock">
@@ -514,12 +430,14 @@
                         <TextBlock Grid.Row="0" Text="Telemetry Analysis" FontWeight="Bold" FontSize="16" Foreground="#1E293B" Margin="0,0,0,15"/>
                         <Grid Grid.Row="1">
                             <Grid.RowDefinitions>
-                                <RowDefinition Height="220"/>
+                                <RowDefinition Height="200"/>
                                 <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="180"/>
                             </Grid.RowDefinitions>
 
                             <!-- Global Overview Chart -->
-                            <Border Grid.Row="0" Background="White" CornerRadius="8" BorderBrush="#E2E8F0" BorderThickness="1" Margin="0,0,0,20" Padding="10">
+                            <Border Grid.Row="0" Background="White" CornerRadius="8" BorderBrush="#E2E8F0" BorderThickness="1" Margin="0,0,0,15" Padding="10">
                                 <Grid>
                                     <TextBlock Text="Parameters Overview (All T-Series)" FontSize="10" Foreground="Gray" VerticalAlignment="Top" HorizontalAlignment="Right"/>
                                     <lvc:CartesianChart x:Name="chartGlobal" LegendLocation="Bottom" Hoverable="True">
@@ -533,27 +451,27 @@
                             <ListBox Grid.Row="1" x:Name="lstTelemetry" BorderThickness="0" Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Stretch">
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
-                                        <Border Margin="0,0,0,15" Padding="15" Background="#F8FAFC" CornerRadius="8" BorderBrush="#E2E8F0" BorderThickness="1">
+                                        <Border Margin="0,0,0,10" Padding="12" Background="#F8FAFC" CornerRadius="8" BorderBrush="#E2E8F0" BorderThickness="1">
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="150"/>
+                                                    <ColumnDefinition Width="140"/>
                                                     <ColumnDefinition Width="*"/>
                                                     <ColumnDefinition Width="Auto"/>
                                                 </Grid.ColumnDefinitions>
 
                                                 <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                                    <TextBlock Text="{Binding ParameterName}" FontWeight="Bold" FontSize="14" Foreground="{StaticResource AccentPurple}"/>
-                                                    <TextBlock Text="{Binding Unit}" FontSize="11" Foreground="{StaticResource SecondaryText}"/>
-                                                    <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
-                                                        <TextBlock Text="Min: " FontSize="10" Foreground="Gray"/>
-                                                        <TextBlock Text="{Binding MinValue}" FontSize="10" FontWeight="SemiBold"/>
-                                                        <TextBlock Text=" Max: " FontSize="10" Foreground="Gray" Margin="10,0,0,0"/>
-                                                        <TextBlock Text="{Binding MaxValue}" FontSize="10" FontWeight="SemiBold"/>
+                                                    <TextBlock Text="{Binding ColumnName}" FontWeight="Bold" FontSize="13" Foreground="{StaticResource AccentPurple}"/>
+                                                    <TextBlock Text="{Binding TableName}" FontSize="10" Foreground="{StaticResource SecondaryText}"/>
+                                                    <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                                        <TextBlock Text="Min: " FontSize="9" Foreground="Gray"/>
+                                                        <TextBlock Text="{Binding MinValue}" FontSize="9" FontWeight="SemiBold"/>
+                                                        <TextBlock Text=" Max: " FontSize="9" Foreground="Gray" Margin="8,0,0,0"/>
+                                                        <TextBlock Text="{Binding MaxValue}" FontSize="9" FontWeight="SemiBold"/>
                                                     </StackPanel>
                                                 </StackPanel>
 
-                                                <Border Grid.Column="1" Height="80" Margin="20,0" Background="White" CornerRadius="4" BorderBrush="#F1F5F9" BorderThickness="1">
-                                                    <lvc:CartesianChart Series="{Binding ChartSeries}" Hoverable="False" DataTooltip="{x:Null}">
+                                                <Border Grid.Column="1" Height="60" Margin="15,0" Background="White" CornerRadius="4" BorderBrush="#F1F5F9" BorderThickness="1">
+                                                    <lvc:CartesianChart Series="{Binding ChartSeries}" Hoverable="True">
                                                         <lvc:CartesianChart.AxisX>
                                                             <lvc:Axis ShowLabels="False" IsMerged="True"/>
                                                         </lvc:CartesianChart.AxisX>
@@ -563,10 +481,10 @@
                                                     </lvc:CartesianChart>
                                                 </Border>
 
-                                                <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" MinWidth="60">
-                                                    <TextBlock Text="Current" FontSize="9" Foreground="Gray" HorizontalAlignment="Right"/>
-                                                    <TextBlock Text="{Binding CurrentValue}" FontSize="18" FontWeight="Bold" Foreground="#1E293B" HorizontalAlignment="Right"/>
-                                                    <TextBlock Text="{Binding Status}" FontSize="10" FontWeight="Bold" HorizontalAlignment="Right">
+                                                <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" MinWidth="50">
+                                                    <TextBlock Text="Current" FontSize="8" Foreground="Gray" HorizontalAlignment="Right"/>
+                                                    <TextBlock Text="{Binding CurrentValue}" FontSize="16" FontWeight="Bold" Foreground="#1E293B" HorizontalAlignment="Right"/>
+                                                    <TextBlock Text="{Binding Status}" FontSize="9" FontWeight="Bold" HorizontalAlignment="Right">
                                                         <TextBlock.Style>
                                                             <Style TargetType="TextBlock">
                                                                 <Style.Triggers>
@@ -582,6 +500,32 @@
                                     </DataTemplate>
                                 </ListBox.ItemTemplate>
                             </ListBox>
+
+                            <GridSplitter Grid.Row="2" Height="5" HorizontalAlignment="Stretch" Background="#F1F5F9" Margin="0,5"/>
+
+                            <Grid Grid.Row="3">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Grid.Row="0" Text="Table Records Preview" FontWeight="Bold" FontSize="14" Foreground="#475569" Margin="0,5,0,10"/>
+                                <Border Grid.Row="1" Background="White" CornerRadius="8" BorderBrush="#E2E8F0" BorderThickness="1">
+                                    <DataGrid x:Name="gridTableRecords" AutoGenerateColumns="True" IsReadOnly="True" BorderThickness="0" Background="Transparent" 
+                                              AlternatingRowBackground="#F8FAFC" GridLinesVisibility="None" HeadersVisibility="Column" 
+                                              FontSize="11" RowHeight="25" SelectedCellsChanged="gridTableRecords_SelectedCellsChanged">
+                                        <DataGrid.ColumnHeaderStyle>
+                                            <Style TargetType="DataGridColumnHeader">
+                                                <Setter Property="Background" Value="#F1F5F9"/>
+                                                <Setter Property="Foreground" Value="#475569"/>
+                                                <Setter Property="FontWeight" Value="SemiBold"/>
+                                                <Setter Property="Padding" Value="10,5"/>
+                                                <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                                                <Setter Property="BorderBrush" Value="#E2E8F0"/>
+                                            </Style>
+                                        </DataGrid.ColumnHeaderStyle>
+                                    </DataGrid>
+                                </Border>
+                            </Grid>
                         </Grid>
                     </Grid>
                 </Border>
